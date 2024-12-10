@@ -8,7 +8,7 @@ import {
   Resolver,
 } from '@nestjs/graphql';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Equal, FindOptionsWhere, In, Repository } from 'typeorm';
+import { Equal, FindOptionsWhere, In, Or, Repository } from 'typeorm';
 import { EmailFiltersArgs, UserEmail } from '../email/email.types';
 import { EmailEntity } from '../email/email.entity';
 import { UserId } from './user.interfaces';
@@ -54,6 +54,13 @@ export class UserResolver {
 
       if (filters.address.in?.length > 0) {
         where.address = In(filters.address.in);
+      }
+
+      if (filters.address.equal && filters.address.in?.length > 0) {
+        where.address = Or(
+          Equal(filters.address.equal),
+          In(filters.address.in),
+        );
       }
     }
 
