@@ -7,20 +7,17 @@ import {
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Equal, FindOptionsWhere, In, Or, Repository } from 'typeorm';
 import { EmailFiltersArgs, UserEmail } from '../email/email.types';
-import { EmailEntity } from '../email/email.entity';
 import { UserId } from './user.interfaces';
 import { UserService } from './user.service';
 import { AddUser, User, UserIdArgs } from './user.types';
+import { EmailService } from '../email/email.service';
 
 @Resolver(() => User)
 export class UserResolver {
   constructor(
     private readonly _service: UserService,
-    @InjectRepository(EmailEntity)
-    private readonly emailRepository: Repository<EmailEntity>,
+    private readonly _emailService: EmailService,
   ) {}
 
   @Query(() => User, { name: 'user', nullable: true })
@@ -43,30 +40,6 @@ export class UserResolver {
     @Parent() user: User,
     @Args() filters: EmailFiltersArgs,
   ): Promise<UserEmail[]> {
-    const where: FindOptionsWhere<EmailEntity> = {
-      userId: Equal(user.id),
-    };
-
-    if (filters.address) {
-      if (filters.address.equal) {
-        where.address = Equal(filters.address.equal);
-      }
-
-      if (filters.address.in?.length > 0) {
-        where.address = In(filters.address.in);
-      }
-
-      if (filters.address.equal && filters.address.in?.length > 0) {
-        where.address = Or(
-          Equal(filters.address.equal),
-          In(filters.address.in),
-        );
-      }
-    }
-
-    return this.emailRepository.find({
-      where,
-      order: { address: 'asc' },
-    });
+    return this._emailService.getEmails(filters, user);
   }
 }
