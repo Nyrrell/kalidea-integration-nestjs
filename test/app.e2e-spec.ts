@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { UserEntity } from '../src/user/user.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EmailEntity } from '../src/email/email.entity';
+import { randomUUID } from 'node:crypto';
 
 const knownUserId = '0f9fcea9-f618-44e5-b182-0e3c83586f8b';
 
@@ -34,6 +35,8 @@ const knownUser = {
 };
 
 const [email1, email2, email3] = knownUser.emails;
+
+const newEmail = 'test4@upcse-integration.coop';
 
 describe('Tests e2e', () => {
   let app: INestApplication;
@@ -260,6 +263,116 @@ describe('Tests e2e', () => {
           .expect((res) => {
             expect(res.body.errors?.[0]?.message).not.toBe('Not Implemented');
             expect(res.body.data?.emailsList[0].user.id).toBe(knownUserId);
+          });
+      });
+    });
+
+    describe('[Mutation] Email', () => {
+      it(`[13] Devrait ajouter un email à l'utilisateur`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(userId: "${knownUserId}", address: "${newEmail}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(res.body.data.addEmail).toBeDefined();
+          });
+      });
+
+      it(`[14] Devrait retourner une erreur de validation si l'adresse mail est invalide'`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(userId: "${knownUserId}", address: "")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(
+              res.body.errors?.[0].extensions?.originalError?.message,
+            ).toContain('address must be an email');
+          });
+      });
+
+      it(`[15] Devrait retourner une erreur de validation si l'utilisateur n'est pas renseigné`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(userId: "", address: "${newEmail}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(
+              res.body.errors?.[0].extensions?.originalError?.message,
+            ).toContain(`L'identifiant de l'utilisateur doit être défini`);
+          });
+      });
+
+      it(`[16] Devrait retourner une erreur de validation si l'utilisateur n'existe pas`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(userId: "${randomUUID()}", address: "${newEmail}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(
+              res.body.errors?.[0].extensions?.originalError?.message,
+            ).toContain(`L'utilisateur n'a pas été trouvé`);
+          });
+      });
+
+      it(`[17] Devrait supprimer l'email d'un utilisateur`, () => {
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {deleteEmail(userId: "${knownUserId}", address: "${email1.address}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(res.body.data.deleteEmail).toBe(1);
+          });
+      });
+
+      it(`[18] Devrait retourner une erreur de validation car l'utilisateur est inactif`, async () => {
+        await request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {deactivateUser(userId: "${knownUserId}")}`,
+          })
+          .expect(200);
+
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {addEmail(userId: "${knownUserId}", address: "${email1.address}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(
+              res.body.errors?.[0].extensions?.originalError?.message,
+            ).toContain(`L'utilisateur doit être actif`);
+          });
+      });
+
+      it(`[19] Devrait retourner une erreur de validation car l'utilisateur est inactif`, async () => {
+        await request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {deactivateUser(userId: "${knownUserId}")}`,
+          })
+          .expect(200);
+
+        return request(app.getHttpServer())
+          .post('/graphql')
+          .send({
+            query: `mutation {deleteEmail(userId: "${knownUserId}", address: "${email2.address}")}`,
+          })
+          .expect(200)
+          .expect((res) => {
+            expect(
+              res.body.errors?.[0].extensions?.originalError?.message,
+            ).toContain(`L'utilisateur doit être actif`);
           });
       });
     });
