@@ -22,6 +22,9 @@ export class User implements IUser {
 
   @Field(() => Date, { nullable: true })
   birthdate?: Maybe<Date>;
+
+  @Field(() => String)
+  status?: string;
 }
 
 /**

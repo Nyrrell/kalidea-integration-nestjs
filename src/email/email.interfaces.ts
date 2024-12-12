@@ -8,3 +8,5 @@ export type IEmailFilters = {
 };
 
 export type EmailId = IEmail['id'];
+
+export type IAddEmail = Omit<IEmail, 'id'>;

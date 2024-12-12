@@ -33,12 +33,7 @@ export class UserService {
    * @returns L'identifiant de l'utilisateur désactivé
    */
   async deactivate(userId: UserId) {
-    const userExists = await this.userRepository.exist({
-      where: { id: Equal(userId) },
-    });
-    if (!userExists) {
-      throw new NotFoundException(`L'utilisateur n'a pas été trouvé`);
-    }
+    await this.get(userId);
 
     await this.userRepository.update(
       { id: Equal(userId) },
@@ -53,8 +48,14 @@ export class UserService {
    * @param id Identifiant de l'utilisateur à récupérer
    * @returns L'utilisateur correspondant à l'identifiant ou undefined
    */
-  get(id: UserId): Promise<IUser> {
-    return this.userRepository.findOneBy({ id: Equal(id) });
+  async get(id: UserId): Promise<IUser> {
+    const user = await this.userRepository.findOneBy({ id: Equal(id) });
+
+    if (!user) {
+      throw new NotFoundException(`L'utilisateur n'a pas été trouvé`);
+    }
+
+    return user;
   }
 
   /**

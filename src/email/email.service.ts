@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, FindOptionsWhere, In, Or, Repository } from 'typeorm';
-import { EmailId, IEmail } from './email.interfaces';
+import { EmailId, IAddEmail, IEmail } from './email.interfaces';
 import { EmailEntity } from './email.entity';
-import { EmailFiltersArgs, UserEmail } from './email.types';
+import { DeleteEmail, EmailFiltersArgs, UserEmail } from './email.types';
 import { User } from '../user/user.types';
 
 @Injectable()
@@ -56,5 +56,31 @@ export class EmailService {
       where,
       order: { address: 'asc' },
     });
+  }
+
+  async addEmail(email: IAddEmail, user: User): Promise<EmailId> {
+    if (user.status !== 'active') {
+      throw new UnauthorizedException(`L'utilisateur doit être actif`);
+    }
+
+    const addedEmail = await this.emailRepository.insert({
+      userId: user.id,
+      address: email.address,
+    });
+
+    return addedEmail.identifiers[0].id;
+  }
+
+  async deleteEmail(email: DeleteEmail, user: User): Promise<number> {
+    if (user.status !== 'active') {
+      throw new UnauthorizedException(`L'utilisateur doit être actif`);
+    }
+
+    const emailEntity = await this.emailRepository.delete({
+      userId: user.id,
+      address: email.address,
+    });
+
+    return emailEntity.affected;
   }
 }
